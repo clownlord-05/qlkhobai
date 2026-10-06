@@ -75,6 +75,8 @@ const sameOrigin = req => { const o = req.headers.origin; if (!o) return true; c
 
 const FILES = { // chỉ phục vụ các file nằm trong danh sách này: [file, type, cần đăng nhập]
   '/login': ['login.html', 'text/html; charset=utf-8', false],
+  '/robots.txt': ['robots.txt', 'text/plain; charset=utf-8', false],
+  '/llms.txt': ['llms.txt', 'text/plain; charset=utf-8', false],
   '/login.css': ['login.css', 'text/css; charset=utf-8', false],
   '/login.js': ['login.js', 'application/javascript; charset=utf-8', false],
   '/': ['index.html', 'text/html; charset=utf-8', true],

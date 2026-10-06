@@ -1,0 +1,2 @@
+# Quản lý phế liệu
+Hệ thống quản lý nội bộ. Yêu cầu đăng nhập để sử dụng.
