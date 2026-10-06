@@ -160,8 +160,18 @@ $('eTime').value=toLocalISO(new Date());
   if(!me.ok){location.href='/login';return}
   const m=await me.json();CSRF=m.csrf;ME=m;
   $('who').textContent='👤 '+m.user+(m.role==='admin'?' (quản trị)':'');
-  if(m.role==='admin')$('navUsers').style.display='';
-  try{db=await api('GET','/api/data')}catch(e){if(e)alert(e.message);return}
-  setMode();
-  showTab(localStorage.getItem('phelieu_tab')||'tabEntry');
+  if(m.role==='admin') {
+      $('navUsers').style.display='';
+    } else {
+      document.querySelector('[data-tab="tabReport"]').style.display='none';
+      document.querySelector('[data-tab="tabMat"]').style.display='none';
+      document.querySelector('[data-tab="tabStock"]').style.display='none';
+      const excelDiv = document.querySelector('#tabEntry .row:nth-child(2)');
+      if (excelDiv) excelDiv.style.display = 'none';
+      $('ePrice').disabled = true;
+      $('eTime').disabled = true;
+    }
+    try{db=await api('GET','/api/data')}catch(e){if(e)alert(e.message);return}
+    setMode();
+    showTab(m.role==='admin' ? (localStorage.getItem('phelieu_tab')||'tabEntry') : 'tabEntry');
 })();

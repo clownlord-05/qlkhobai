@@ -134,7 +134,11 @@ async function handle(req, res) {
     const M = req.method;
     if (M === 'GET') {
       if (url === '/api/me') return json(res, 200, { user: s.user, csrf: s.csrf, role: s.role });
-      if (url === '/api/data') return json(res, 200, await getData());
+      if (url === '/api/data') {
+          const data = await getData();
+          if (!isAdmin) { data.entries = []; data.hist = []; }
+          return json(res, 200, data);
+        }
       if (url === '/api/users') {
         if (!isAdmin) return json(res, 403, { error: 'Forbidden' });
         return json(res, 200, (await U.listUsers()).map(u => ({ username: u.username, role: u.role, created: u.created ? u.created.replace(' ', 'T') : null })));
@@ -151,6 +155,7 @@ async function handle(req, res) {
 
     // --- Vật liệu ---
     if (M === 'POST' && url === '/api/materials') {
+        if (!isAdmin) return json(res, 403, { error: 'Forbidden' });
       const d = await readJson(req); if (!d) return bad(res, 'Dữ liệu không hợp lệ');
       const name = String(d.name || '').trim();
       if (!name || name.length > 100) return bad(res, 'Tên vật liệu 1-100 ký tự');
@@ -185,6 +190,7 @@ async function handle(req, res) {
     }
     if (m && M === 'DELETE') {
       if ((await db.q('SELECT 1 FROM entries WHERE material_id=? LIMIT 1', [m[1]])).length) return bad(res, 'Vật liệu đã có phiếu, không thể xóa');
+      if (!isAdmin) return json(res, 403, { error: 'Forbidden' });
       await db.q('DELETE FROM materials WHERE id=?', [m[1]]);
       audit(`MAT_DEL ${m[1]} by ${s.user}`, req);
       return json(res, 200, { ok: true });
@@ -192,7 +198,13 @@ async function handle(req, res) {
 
     // --- Phiếu nhập/bán ---
     if (M === 'POST' && url === '/api/entries') {
-      const d = await readJson(req); if (!d) return bad(res, 'Dữ liệu không hợp lệ');
+        const d = await readJson(req); if (!d) return bad(res, 'Invalid data');
+        if (!isAdmin) {
+          d.time = new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 16);
+          const rows = await db.q('SELECT price FROM materials WHERE id=?', [d.matId]);
+          if (!rows.length) return bad(res, 'Vat lieu khong ton tai');
+          d.price = Number(rows[0].price);
+        }
       if (d.type !== 'in' && d.type !== 'out') return bad(res, 'Loại phiếu không hợp lệ');
       if (!TIME_RE.test(String(d.time))) return bad(res, 'Ngày giờ không hợp lệ');
       if (!ID_RE.test(String(d.matId))) return bad(res, 'Vật liệu không hợp lệ');
@@ -206,6 +218,7 @@ async function handle(req, res) {
       return json(res, 200, { ok: true, id });
     }
     if (M === 'POST' && url === '/api/entries/bulk') {
+        if (!isAdmin) return json(res, 403, { error: 'Forbidden' });
       const d = await readJson(req);
       if (!d || !Array.isArray(d.items)) return bad(res, 'Dữ liệu không hợp lệ');
       let count = 0;
@@ -223,6 +236,7 @@ async function handle(req, res) {
     }
     m = /^\/api\/entries\/([a-zA-Z0-9]{1,32})$/.exec(url);
     if (m && M === 'DELETE') {
+      if (!isAdmin) return json(res, 403, { error: 'Forbidden' });
       await db.q('DELETE FROM entries WHERE id=?', [m[1]]);
       audit(`ENTRY_DEL ${m[1]} by ${s.user}`, req);
       return json(res, 200, { ok: true });
