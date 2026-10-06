@@ -71,7 +71,7 @@ function body(req, limit = 64 * 1024) {
   });
 }
 const readJson = async (req, limit) => { try { return JSON.parse(await body(req, limit)) || {}; } catch { return null; } };
-const sameOrigin = req => { const o = req.headers.origin; return !o || o === `${TLS ? 'https' : 'http'}://${req.headers.host}`; };
+const sameOrigin = req => { const o = req.headers.origin; if (!o) return true; const proto = req.headers['x-forwarded-proto'] || (TLS ? 'https' : 'http'); return o === `${proto}://${req.headers.host}`; };
 
 const FILES = { // chỉ phục vụ các file nằm trong danh sách này: [file, type, cần đăng nhập]
   '/login': ['login.html', 'text/html; charset=utf-8', false],
@@ -106,7 +106,7 @@ async function getData() {
 
 async function handle(req, res) {
   const url = req.url.split('?')[0];
-  const cookieFlags = `HttpOnly; SameSite=Strict; Path=/${TLS ? '; Secure' : ''}`;
+  const cookieFlags = `HttpOnly; SameSite=Strict; Path=/${(req.headers['x-forwarded-proto'] === 'https' || TLS) ? '; Secure' : ''}`;
 
   if (req.method === 'POST' && url === '/api/login') {
     if (!sameOrigin(req)) return json(res, 403, { error: 'Forbidden' });
