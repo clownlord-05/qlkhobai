@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quản lý phế liệu</title>
+<script src="/vendor/exceljs.min.js"></script>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header style="display:flex;justify-content:space-between;align-items:center"><span>♻ Quản lý phế liệu</span><span style="font-size:14px;font-weight:400"><span id="who"></span> <button class="sec" onclick="logout()">Đăng xuất</button></span></header>
+<nav>
+ <button data-tab="tabEntry" class="active" onclick="showTab('tabEntry')">📝 Ghi phiếu mới</button>
+ <button data-tab="tabReport" onclick="showTab('tabReport')">📊 Tra cứu & báo cáo</button>
+ <button data-tab="tabMat" onclick="showTab('tabMat')">🏷️ Vật liệu & Đơn giá</button>
+ <button data-tab="tabStock" onclick="showTab('tabStock')">📦 Quản lý kho</button>
+ <button data-tab="tabUsers" id="navUsers" style="display:none" onclick="showTab('tabUsers')">👤 Tài khoản</button>
+</nav>
+<main>
+
+<section class="card tab" id="tabEntry">
+<div class="row">
+ <label>Loại
+  <select id="eType"><option value="in">Nhập phế liệu (chi tiền)</option><option value="out">Bán ra (thu tiền)</option></select></label>
+ <label>Ngày giờ <input type="datetime-local" id="eTime"></label>
+ <label>Vật liệu <select id="eMat"></select></label>
+ <label>Đơn giá (đ/kg) <input type="number" id="ePrice" min="0" step="any"></label>
+ <label>Khối lượng (kg) <input type="number" id="eQty" min="0" step="any"></label>
+ <label>Thành tiền <input id="eTotal" readonly></label>
+ <label>Ghi chú <input id="eNote"></label>
+ <button onclick="addEntry()">Lưu</button>
+</div>
+<div class="row" style="margin-top:15px; border-top: 1px solid #eee; padding-top:15px; align-items: center;">
+ <span style="font-size: 14px; color: #666; margin-right: auto;">Hoặc nhập hàng loạt từ Excel:</span>
+ <button class="sec" onclick="downloadTemplate()">Tải file mẫu</button>
+ <button class="sec" onclick="document.getElementById('fImport').click()">Nhập dữ liệu</button>
+ <input type="file" id="fImport" accept=".xlsx" style="display:none" onchange="importExcel(this)">
+</div>
+</section>
+
+<section class="card tab" id="tabReport">
+<h2>Tra cứu & báo cáo</h2>
+<div class="row">
+ <label>Xem theo
+  <select id="fMode" onchange="setMode()"><option value="day">Ngày</option><option value="month">Tháng</option><option value="year">Năm</option><option value="all">Tất cả</option></select></label>
+ <label>Thời gian <span id="fWrap"></span></label>
+ <button onclick="render()">Tìm</button>
+ <button class="x" onclick="exportExcel()">⬇ Xuất Excel</button>
+</div>
+<br>
+<div class="sum">
+ <div class="chi">Tổng chi (nhập)<b id="sChi">0</b></div>
+ <div class="thu">Tổng thu (bán)<b id="sThu">0</b></div>
+ <div>Chênh lệch (thu − chi)<b id="sNet">0</b></div>
+ <div>Khối lượng nhập<b id="sQty">0 kg</b></div>
+</div>
+<h3 style="color:#d32f2f; margin-top:20px; font-size:16px;">Lịch sử nhập phế liệu</h3>
+<div class="scroll"><table>
+<thead><tr><th>Ngày giờ</th><th>Vật liệu</th><th class="n">Đơn giá</th><th class="n">KL (kg)</th><th class="n">Thành tiền</th><th>Ghi chú</th><th></th></tr></thead>
+<tbody id="eBodyIn"></tbody></table></div>
+
+<h3 style="color:#388e3c; margin-top:20px; font-size:16px;">Lịch sử bán ra</h3>
+<div class="scroll"><table>
+<thead><tr><th>Ngày giờ</th><th>Vật liệu</th><th class="n">Đơn giá</th><th class="n">KL (kg)</th><th class="n">Thành tiền</th><th>Ghi chú</th><th></th></tr></thead>
+<tbody id="eBodyOut"></tbody></table></div>
+<h3>Tổng hợp theo vật liệu</h3>
+<div class="scroll"><table>
+<thead><tr><th>Vật liệu</th><th class="n">KL nhập</th><th class="n">Tiền chi</th><th class="n">KL bán</th><th class="n">Tiền thu</th></tr></thead>
+<tbody id="gBody"></tbody></table></div>
+</section>
+
+<section class="card tab" id="tabMat">
+<h2>Vật liệu & đơn giá</h2>
+<div class="row">
+ <label>Tên vật liệu <input id="mName"></label>
+ <label>Đơn giá (đ/kg) <input type="number" id="mPrice" min="0" step="any"></label>
+ <button onclick="addMat()">Thêm vật liệu</button>
+</div><br>
+<div class="cols">
+ <div class="scroll"><table>
+  <thead><tr><th>Vật liệu</th><th class="n">Đơn giá hiện tại</th><th></th></tr></thead>
+  <tbody id="mBody"></tbody></table></div>
+ <div>
+  <b>Lịch sử điều chỉnh giá</b>
+  <div class="scroll"><table>
+  <thead><tr><th>Thời điểm</th><th>Vật liệu</th><th class="n">Giá cũ</th><th class="n">Giá mới</th></tr></thead>
+  <tbody id="hBody"></tbody></table></div>
+ </div>
+</div>
+</section>
+
+<section class="card tab" id="tabStock">
+<h2>Quản lý kho (Tồn kho hiện tại)</h2>
+<div class="scroll"><table>
+<thead><tr><th>STT</th><th>Vật liệu</th><th class="n">Tổng nhập (kg)</th><th class="n">Tổng xuất (kg)</th><th class="n">Tồn kho hiện tại (kg)</th></tr></thead>
+<tbody id="stockBody"></tbody></table></div>
+</section>
+
+<section class="card tab" id="tabUsers">
+<h2>Quản lý tài khoản</h2>
+<div class="row">
+ <label>Tên đăng nhập <input id="uName" maxlength="32" autocomplete="off"></label>
+ <label>Mật khẩu (≥ 12 ký tự) <input id="uPass" type="password" maxlength="128" autocomplete="new-password"></label>
+ <label>Quyền <select id="uRole"><option value="user">Nhân viên</option><option value="admin">Quản trị (được tạo/xóa tài khoản)</option></select></label>
+ <button onclick="addUser()">Tạo tài khoản</button>
+</div><br>
+<div class="scroll"><table>
+ <thead><tr><th>Tên đăng nhập</th><th>Quyền</th><th>Ngày tạo</th><th></th></tr></thead>
+ <tbody id="uBody"></tbody></table></div>
+</section>
+</main>
+
+<script src="/export.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>
